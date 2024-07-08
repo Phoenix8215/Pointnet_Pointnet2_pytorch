@@ -77,6 +77,7 @@ class get_model(nn.Module):
 class get_loss(torch.nn.Module):
     def __init__(self, mat_diff_loss_scale=0.001):
         super(get_loss, self).__init__()
+        # 特征变换矩阵正则化损失的权重
         self.mat_diff_loss_scale = mat_diff_loss_scale
 
     def forward(self, pred, target, trans_feat):

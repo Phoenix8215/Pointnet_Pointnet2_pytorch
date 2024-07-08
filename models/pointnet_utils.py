@@ -152,6 +152,6 @@ def feature_transform_reguliarzer(trans):
     I = torch.eye(d)[None, :, :]
     if trans.is_cuda:
         I = I.cuda()
-    # 在第 1 和第 2 维度上计算了范数
+    # 在第 1 和第 2 维度上计算了范数(第 0 维是 batch_size)
     loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2, 1)) - I, dim=(1, 2)))
     return loss
