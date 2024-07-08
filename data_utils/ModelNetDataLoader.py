@@ -33,7 +33,8 @@ def farthest_point_sample(point, npoint):
     N, D = point.shape
     xyz = point[:,:3]
     centroids = np.zeros((npoint,))
-    distance = np.ones((N,)) * 1e10
+    # distance = np.ones((N,)) * 1e10
+    distance = np.ones((N,)) * 1
     farthest = np.random.randint(0, N)
     for i in range(npoint):
         centroids[i] = farthest
@@ -47,23 +48,30 @@ def farthest_point_sample(point, npoint):
 
 
 class ModelNetDataLoader(Dataset):
-    def __init__(self, root, args, split='train', process_data=False):
+    # def __init__(self, root, args, split='train', process_data=False):
+    def __init__(self, root, split='train', process_data=False):
         self.root = root
-        self.npoints = args.num_point
-        self.process_data = process_data
-        self.uniform = args.use_uniform_sample
-        self.use_normals = args.use_normals
-        self.num_category = args.num_category
+        # self.npoints = args.num_point
+        self.npoints = 100
+        self.process_data = True
+        # self.uniform = args.use_uniform_sample
+        # self.use_normals = args.use_normals
+        # self.num_category = args.num_category
+        self.uniform = True
+        self.use_normals = False
+        self.num_category = 10
 
         if self.num_category == 10:
             self.catfile = os.path.join(self.root, 'modelnet10_shape_names.txt')
         else:
             self.catfile = os.path.join(self.root, 'modelnet40_shape_names.txt')
-
+        
+        # 类别名称列表
         self.cat = [line.rstrip() for line in open(self.catfile)]
+        # 类别名称到索引的映射字典
         self.classes = dict(zip(self.cat, range(len(self.cat))))
 
-        shape_ids = {}
+        shape_ids = {} # 用一个字典来存储训练集和测试集的编号
         if self.num_category == 10:
             shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_train.txt'))]
             shape_ids['test'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test.txt'))]
@@ -82,7 +90,7 @@ class ModelNetDataLoader(Dataset):
         else:
             self.save_path = os.path.join(root, 'modelnet%d_%s_%dpts.dat' % (self.num_category, split, self.npoints))
 
-        if self.process_data:
+        if self.process_data:# 如果需要处理数据且保存路径不存在，则处理数据并保存
             if not os.path.exists(self.save_path):
                 print('Processing data %s (only running in the first time)...' % self.save_path)
                 self.list_of_points = [None] * len(self.datapath)
@@ -99,8 +107,8 @@ class ModelNetDataLoader(Dataset):
                     else:
                         point_set = point_set[0:self.npoints, :]
 
-                    self.list_of_points[index] = point_set
-                    self.list_of_labels[index] = cls
+                    self.list_of_points[index] = point_set # 预处理后的点云坐标+法向量
+                    self.list_of_labels[index] = cls # 标签
 
                 with open(self.save_path, 'wb') as f:
                     pickle.dump([self.list_of_points, self.list_of_labels], f)
@@ -127,7 +135,7 @@ class ModelNetDataLoader(Dataset):
                 point_set = point_set[0:self.npoints, :]
                 
         point_set[:, 0:3] = pc_normalize(point_set[:, 0:3])
-        if not self.use_normals:
+        if not self.use_normals: # 如果不使用法向量，只保留前3个维度
             point_set = point_set[:, 0:3]
 
         return point_set, label[0]
@@ -139,8 +147,15 @@ class ModelNetDataLoader(Dataset):
 if __name__ == '__main__':
     import torch
 
-    data = ModelNetDataLoader('/data/modelnet40_normal_resampled/', split='train')
+    data = ModelNetDataLoader('/home/fengzhe/workstation/modelnet40_normal_resampled/', split='train')
     DataLoader = torch.utils.data.DataLoader(data, batch_size=12, shuffle=True)
     for point, label in DataLoader:
         print(point.shape)
         print(label.shape)
+
+
+# The size of train data is 3991
+# torch.Size([12, 100, 3]) # batch_size = 12
+# torch.Size([12])
+# torch.Size([12, 100, 3])
+# torch.Size([12])

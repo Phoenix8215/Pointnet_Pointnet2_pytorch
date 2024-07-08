@@ -35,7 +35,7 @@ class STN3d(nn.Module):
         x = F.relu(self.bn4(self.fc1(x)))
         x = F.relu(self.bn5(self.fc2(x)))
         x = self.fc3(x)
-
+        # 生成一个 k x k 的单位矩阵   
         iden = Variable(torch.from_numpy(np.array([1, 0, 0, 0, 1, 0, 0, 0, 1]).astype(np.float32))).view(1, 9).repeat(
             batchsize, 1)
         if x.is_cuda:
@@ -107,7 +107,16 @@ class PointNetEncoder(nn.Module):
         if D > 3:
             feature = x[:, :, 3:]
             x = x[:, :, :3]
+        """
+        进行批量矩阵乘法，x 的形状为 (B, N, 3)，trans 的形状为 (B, 3, 3)。
+        结果 x 的形状仍然是 (B, N, 3)，表示每个点的坐标经过特征变换后的新坐标。
+        """
         x = torch.bmm(x, trans)
+        """
+        在维度 2（即每个点的特征维度）上进行拼接。变换后的 x 形状为 (B, N, 3)，
+        feature 形状为 (B, N, D-3)。
+        拼接后的 x 形状为 (B, N, D)。
+        """
         if D > 3:
             x = torch.cat([x, feature], dim=2)
         x = x.transpose(2, 1)
@@ -134,9 +143,15 @@ class PointNetEncoder(nn.Module):
 
 
 def feature_transform_reguliarzer(trans):
+    """
+    trans 是一个三维张量，形状为 (batch_size, d, d)，表示一批特征变换矩阵。
+    trans.size()[1] 获取特征变换矩阵的维度 d。  
+    """
     d = trans.size()[1]
+    # 将单位矩阵的形状从 (d, d) 扩展为 (1, d, d)
     I = torch.eye(d)[None, :, :]
     if trans.is_cuda:
         I = I.cuda()
+    # 在第 1 和第 2 维度上计算了范数
     loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2, 1)) - I, dim=(1, 2)))
     return loss
